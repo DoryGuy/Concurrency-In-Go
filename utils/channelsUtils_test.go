@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -48,7 +49,7 @@ func TestTakeAndRepeatFnChannel(t *testing.T) {
 	defer time.Sleep(time.Second) // give it time to print the Execution time.
 
 	take := TakeChannel
-	repeatFn:= RepeatFn
+	repeatFn:= RepeatFnChannel
 
 	done := make(chan interface{})
 	defer close(done)
@@ -71,7 +72,7 @@ func TestTeeChannel(t *testing.T) {
 
 	tee := TeeChannel
 	take := TakeChannel
-	repeat := RepeatValue
+	repeat := RepeatValueChannel
 
 	done := make(chan interface{})
 	defer close(done)
@@ -95,6 +96,7 @@ func TestBridgeChannels(t *testing.T) {
 	defer time.Sleep(time.Second)  // give it time to print the Execution time.
 
 	bridge := BridgeChannel
+	toInt := ToIntChannel
 
 	genVals := func() <- chan <- chan interface{} {
 		chanStream := make(chan (<-chan interface{}))
@@ -116,9 +118,9 @@ func TestBridgeChannels(t *testing.T) {
 	var result []int
 	expectedResult := []int{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 
-	for v := range bridge(done, genVals()) {
+	for v := range toInt(done, bridge(done, genVals())) {
 		fmt.Printf("%d ", v)
-		result = append(result, v.(int))
+		result = append(result, v)
 	}
 	if !IntArrayEquals(result, expectedResult) {
 		t.Fatalf("expected %v, \n got %v", expectedResult, result)
@@ -136,4 +138,61 @@ func IntArrayEquals(a []int, b []int) bool {
 		}
 	}
 	return true
+}
+
+func TestFanIn(t *testing.T) {
+	// primeFinder is from the book, as an example of using fan out/fan in
+	// not actually a great algorithm to determine prime numbers.
+	// given a number, find the first prime smaller than that number.
+	primeFinder := func(done <-chan interface{}, intStream <-chan int) <-chan interface{} {
+		primeStream := make(chan interface{})
+		go func() {
+			defer close(primeStream)
+			for integer := range intStream {
+				prime := true
+				for divisor := (integer + 1)/2; divisor > 1; divisor-- {
+					if integer%divisor == 0 {
+						prime = false
+						break
+					}
+				}
+
+				if prime {
+					select {
+					case <-done:
+						return
+					case primeStream <- integer:
+					}
+				}
+			}
+		}()
+		return primeStream
+	}
+
+	fanIn := FanInChannel
+	toInt := ToIntChannel
+	repeatFn := RepeatFnChannel
+	take := TakeChannel
+
+	done := make(chan interface{})
+	defer close(done)
+
+	start := time.Now()
+
+	rand := func() interface{} { return rand.Intn(50000000) }
+	randIntStream := toInt(done, repeatFn(done, rand))
+
+	numFinders := 1 + runtime.NumCPU()
+	fmt.Printf("Spinning up %d prime finders.\n", numFinders)
+	finders := make([]<-chan interface{}, numFinders)
+	fmt.Println("Primes:")
+	for i := 0; i < numFinders; i++ {
+		finders[i] = primeFinder(done, randIntStream)
+	}
+
+	for prime := range take(done, fanIn(done, finders...), 10) {
+		fmt.Printf("\t%d\n", prime)
+	}
+
+	fmt.Printf("Search took: %v", time.Since(start))
 }

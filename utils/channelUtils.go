@@ -44,7 +44,7 @@ func OrChannel(channels ... <-chan interface{}) <-chan interface{} {
 
 // RepeatChannel will repeat the values you pass to it infinitely until you tell it to stop.
 // pp. 109
-func RepeatValue(done <- chan interface{}, values ...interface{}) <-chan interface{} {
+func RepeatValueChannel(done <- chan interface{}, values ...interface{}) <-chan interface{} {
 	valStream := make(chan interface{})
 	go func() {
 		defer close(valStream)
@@ -63,7 +63,7 @@ func RepeatValue(done <- chan interface{}, values ...interface{}) <-chan interfa
 
 // RepeatFuncChannel will call the func you pass to it infinitely until you tell it to stop.
 // pp. 109
-func RepeatFn(done <- chan interface{}, fn func() interface{}) <-chan interface{} {
+func RepeatFnChannel(done <- chan interface{}, fn func() interface{}) <-chan interface{} {
 	valStream := make(chan interface{})
 	go func() {
 		defer close(valStream)
@@ -206,3 +206,170 @@ func BridgeChannel(done <-chan interface{}, chanStream <- chan <- chan interface
 	}()
 	return valStream
 }
+
+// For type safety, you may want to convert an interface{} channel to a native type.
+// At the moment I don't have:
+// uint, uint8, uint16, uint32, uint64, uintptr, byte, complex64 and complex128
+// to make them if you need them, just clone and edit.
+
+// ToInt8Channel Take an interface channel and convert it to an int16 channel
+func ToInt8Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int8 {
+	intStream := make(chan int8)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(int8):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToInt16Channel Take an interface channel and convert it to an int16 channel
+func ToInt16Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int16 {
+	intStream := make(chan int16)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(int16):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToInt32Channel Take an interface channel and convert it to an int32 channel
+func ToInt32Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int32 {
+	intStream := make(chan int32)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(int32):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToIntChannel Take an interface channel and convert it to an int channel
+func ToIntChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int {
+	intStream := make(chan int)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+				case <-done:
+				return
+				case intStream <- v.(int):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToInt64Channel Take an interface channel and convert it to an int64 channel
+func ToInt64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int64 {
+	int64Stream := make(chan int64)
+	go func() {
+		defer close(int64Stream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case int64Stream <- v.(int64):
+			}
+		}
+	}()
+	return int64Stream
+}
+
+// ToStringChannel Take an interface channel and convert it to an string channel
+func ToStringChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan string {
+	stringStream := make(chan string)
+	go func() {
+		defer close(stringStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case stringStream <- v.(string):
+			}
+		}
+	}()
+	return stringStream
+}
+
+// ToBoolChannel Take an interface channel and convert it to an bool channel
+func ToBoolChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan bool {
+	boolStream := make(chan bool)
+	go func() {
+		defer close(boolStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case boolStream <- v.(bool):
+			}
+		}
+	}()
+	return boolStream
+}
+
+// ToRuneChannel Take an interface channel and convert it to an rune channel
+func ToRuneChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan rune {
+	runeStream := make(chan rune)
+	go func() {
+		defer close(runeStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case runeStream <- v.(rune):
+			}
+		}
+	}()
+	return runeStream
+}
+
+// ToFloat32Channel Take an interface channel and convert it to an float32 channel
+func ToFloat32Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan float32 {
+	floatStream := make(chan float32)
+	go func() {
+		defer close(floatStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case floatStream <- v.(float32):
+			}
+		}
+	}()
+	return floatStream
+}
+
+// ToFloat64Channel Take an interface channel and convert it to an float64 channel
+func ToFloat64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan float64 {
+	floatStream := make(chan float64)
+	go func() {
+		defer close(floatStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case floatStream <- v.(float64):
+			}
+		}
+	}()
+	return floatStream
+}
+
+
