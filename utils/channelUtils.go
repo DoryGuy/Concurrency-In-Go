@@ -207,6 +207,24 @@ func BridgeChannel(done <-chan interface{}, chanStream <- chan <- chan interface
 	return valStream
 }
 
+// GeneratorToChannel, given a slice, convert it to a channel
+// This version uses the generic interface{} which has a minor cost of conversion.
+// pp.104
+func GeneratorToChannel(done <-chan interface{}, slice ...interface{}) <- chan interface{}{
+	interfaceChannel := make(chan interface{}, len(slice))
+	go func() {
+		defer close(interfaceChannel)
+		for _, i := range slice {
+			select {
+			case <-done:
+				return
+				case interfaceChannel <- i:
+			}
+		}
+	}()
+	return interfaceChannel
+}
+
 // For type safety, you may want to convert an interface{} channel to a native type.
 // At the moment I don't have:
 // uint, uint8, uint16, uint32, uint64, uintptr, byte, complex64 and complex128

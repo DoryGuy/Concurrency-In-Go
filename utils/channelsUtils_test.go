@@ -141,6 +141,12 @@ func IntArrayEquals(a []int, b []int) bool {
 }
 
 func TestFanIn(t *testing.T) {
+	now := time.Now()
+	defer func() {
+		fmt.Println("Execution Time: ", time.Since(now))
+	}()
+	defer time.Sleep(time.Second)  // give it time to print the Execution time.
+
 	// primeFinder is from the book, as an example of using fan out/fan in
 	// not actually a great algorithm to determine prime numbers.
 	// given a number, find the first prime smaller than that number.
@@ -195,4 +201,23 @@ func TestFanIn(t *testing.T) {
 	}
 
 	fmt.Printf("Search took: %v", time.Since(start))
+}
+
+func TestSliceToChannel(t *testing.T) {
+	now := time.Now()
+	defer func() {
+		fmt.Println("Execution Time: ", time.Since(now))
+	}()
+	defer time.Sleep(time.Second)  // give it time to print the Execution time.
+
+	generator := GeneratorToChannel
+	toFloat64 := ToFloat64Channel
+
+	done := make(chan interface{})
+	defer close(done)
+
+	dataChannel := generator(done, 0.1, 0.2, 0.3)
+	for val := range toFloat64(done, dataChannel) {
+		fmt.Printf("%f\n", val)
+	}
 }
