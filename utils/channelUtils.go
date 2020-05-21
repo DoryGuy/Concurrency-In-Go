@@ -5,7 +5,15 @@ import (
 )
 
 // Utilities from  "Concurrency In Go"
-// for combining one or more done channels into a single done that closes
+// Note: All of these utilities are interuptible via a "done" channel.
+//       close the done channel and the utility will close the channel
+//       it has created.
+//
+// Also these channels are compositable, see examples in the test code,
+// or read the book.
+
+
+// OrChannel for combining one or more done channels into a single done that closes
 // if any of it's component channels close pp. 94-95
 //
 // Use by creating a variable like this:
@@ -95,7 +103,9 @@ func TakeChannel(done <- chan interface{}, valueStream <-chan interface{}, num i
 	return takeStream
 }
 
-// OrDoneChannel encapsulate checking for done channels
+// OrDoneChannel encapsulate checking for done channels,
+// It will continue to pass along the values from a channel until the done channel is closed,
+// or the channel passed in is closed.  Useful with a raw channel
 // pp.119-120
 func OrDoneChannel(done <-chan interface{}, c <-chan interface{}) <-chan interface{} {
 	valStream := make(chan interface{})
@@ -120,6 +130,8 @@ func OrDoneChannel(done <-chan interface{}, c <-chan interface{}) <-chan interfa
 }
 
 // Join multiple streams of data into one single stream
+// For instance, a series of workers reading from a channel generating output that needs
+// to be passed along to the next channel.
 // pp. 117
 func FanInChannel(done <-chan interface{}, channels ... <-chan interface{}) <-chan interface{} {
     var wg sync.WaitGroup
@@ -151,6 +163,7 @@ func FanInChannel(done <-chan interface{}, channels ... <-chan interface{}) <-ch
 }
 
 // TeeChannel take the input from the incoming channel and split into two outgoing channels
+// similar to the UNIX tee command.
 // pp.120
 func TeeChannel(done <-chan interface{}, in <- chan interface{}) (<-chan interface{}, <-chan interface{}) {
 	out1 := make(chan interface{})
@@ -226,10 +239,23 @@ func GeneratorToChannel(done <-chan interface{}, slice ...interface{}) <- chan i
 }
 
 // For type safety, you may want to convert an interface{} channel to a native type.
-// At the moment I don't have:
-// uint, uint8, uint16, uint32, uint64, uintptr, byte, complex64 and complex128
-// to make them if you need them, just clone and edit.
+// If you need your own struct/type just clone and edit!
 
+// ToByteChannel Take an interface channel and convert it to an byte channel
+func ToByteChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan byte {
+	byteStream := make(chan byte)
+	go func() {
+		defer close(byteStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case byteStream <- v.(byte):
+			}
+		}
+	}()
+	return byteStream
+}
 // ToInt8Channel Take an interface channel and convert it to an int16 channel
 func ToInt8Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan int8 {
 	intStream := make(chan int8)
@@ -304,6 +330,86 @@ func ToInt64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-c
 			case <-done:
 				return
 			case int64Stream <- v.(int64):
+			}
+		}
+	}()
+	return int64Stream
+}
+
+// ToUInt8Channel Take an interface channel and convert it to an uint16 channel
+func ToUInt8Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uint8 {
+	intStream := make(chan uint8)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(uint8):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToUInt16Channel Take an interface channel and convert it to an uint16 channel
+func ToUInt16Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uint16 {
+	intStream := make(chan uint16)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(uint16):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToUInt32Channel Take an interface channel and convert it to an uint32 channel
+func ToUInt32Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uint32 {
+	intStream := make(chan uint32)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(uint32):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToUIntChannel Take an interface channel and convert it to an uint channel
+func ToUIntChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uint {
+	intStream := make(chan uint)
+	go func() {
+		defer close(intStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intStream <- v.(uint):
+			}
+		}
+	}()
+	return intStream
+}
+
+// ToUInt64Channel Take an interface channel and convert it to an int64 channel
+func ToUInt64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uint64 {
+	int64Stream := make(chan uint64)
+	go func() {
+		defer close(int64Stream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case int64Stream <- v.(uint64):
 			}
 		}
 	}()
@@ -388,6 +494,54 @@ func ToFloat64Channel(done <-chan interface{}, valueStream <-chan interface{}) <
 		}
 	}()
 	return floatStream
+}
+
+// ToComplex64Channel Take an interface channel and convert it to an complex64 channel
+func ToComplex64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan complex64 {
+	complexStream := make(chan complex64)
+	go func() {
+		defer close(complexStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case complexStream <- v.(complex64):
+			}
+		}
+	}()
+	return complexStream
+}
+
+// ToComplex128Channel Take an interface channel and convert it to an complex128 channel
+func ToComplex128Channel(done <-chan interface{}, valueStream <-chan interface{}) <-chan complex128 {
+	complexStream := make(chan complex128)
+	go func() {
+		defer close(complexStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case complexStream <- v.(complex128):
+			}
+		}
+	}()
+	return complexStream
+}
+
+// ToUIntPtrChannel Take an interface channel and convert it to an uintptr channel
+func ToUIntPtrChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan uintptr {
+	intPtrStream := make(chan uintptr)
+	go func() {
+		defer close(intPtrStream)
+		for v := range valueStream {
+			select {
+			case <-done:
+				return
+			case intPtrStream <- v.(uintptr):
+			}
+		}
+	}()
+	return intPtrStream
 }
 
 
