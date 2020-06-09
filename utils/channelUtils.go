@@ -12,6 +12,8 @@ import (
 // Also these channels are compositable, see examples in the test code,
 // or read the book.
 
+// adapted from https://github.com/kat-co/concurrency-in-go-src
+
 
 // OrChannel for combining one or more done channels into a single done that closes
 // if any of it's component channels close pp. 94-95
@@ -238,6 +240,55 @@ func GeneratorToChannel(done <-chan interface{}, slice ...interface{}) <- chan i
 	return interfaceChannel
 }
 
+// I keep thinking that I should be able to pass in an []string to a fn which is declared
+// to be a []interface but it doesn't work. Probably because the data structs are of different sizes.
+// and it's expensive to convert an array.
+func GeneratorFromStringArrayToChannel(done <-chan interface{}, slice []string) <- chan interface{}{
+	interfaceChannel := make(chan interface{}, len(slice))
+	//interfaceChannel := make(chan interface{}, 1)
+	go func() {
+		defer close(interfaceChannel)
+		for _, i := range slice {
+			select {
+			case <-done:
+				return
+			case interfaceChannel <- i:
+			}
+		}
+	}()
+	return interfaceChannel
+}
+
+// Will limit the number of items passed along in the channel to "limit"
+// This is to prevent downstream process from being flooded.
+func ThrottleChannel(done <-chan interface{}, in <- chan interface{}, limit int) <- chan interface{}{
+	orDone := OrDoneChannel
+	interfaceChannel := make(chan interface{})
+	tokens := make(chan interface{}, limit)
+
+	go func() {
+		defer func() {
+			// clean up the channels we create.
+			close(interfaceChannel)
+			close(tokens)
+		}()
+
+		for val := range orDone(done, in) {
+			tokens <- struct{}{}
+			select {
+			case <-done:
+				return
+			case interfaceChannel <- val:
+				<-tokens
+				//fmt.Printf("pushed data in %v\n", val)
+			}
+		}
+	}()
+
+	return interfaceChannel
+}
+
+
 // For type safety, you may want to convert an interface{} channel to a native type.
 // If you need your own struct/type just clone and edit!
 
@@ -418,10 +469,11 @@ func ToUInt64Channel(done <-chan interface{}, valueStream <-chan interface{}) <-
 
 // ToStringChannel Take an interface channel and convert it to an string channel
 func ToStringChannel(done <-chan interface{}, valueStream <-chan interface{}) <-chan string {
+	orDone := OrDoneChannel
 	stringStream := make(chan string)
 	go func() {
 		defer close(stringStream)
-		for v := range valueStream {
+		for v := range orDone(done, valueStream) {
 			select {
 			case <-done:
 				return

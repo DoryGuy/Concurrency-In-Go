@@ -196,11 +196,11 @@ func TestFanIn(t *testing.T) {
 		finders[i] = primeFinder(done, randIntStream)
 	}
 
-	for prime := range take(done, fanIn(done, finders...), 10) {
+	for prime := range take(done, fanIn(done, finders...),10) {
 		fmt.Printf("\t%d\n", prime)
 	}
 
-	fmt.Printf("Search took: %v", time.Since(start))
+	fmt.Printf("Search took: %v\n", time.Since(start))
 }
 
 func TestSliceToChannel(t *testing.T) {
@@ -219,5 +219,67 @@ func TestSliceToChannel(t *testing.T) {
 	dataChannel := generator(done, 0.1, 0.2, 0.3)
 	for val := range toFloat64(done, dataChannel) {
 		fmt.Printf("%f\n", val)
+	}
+}
+
+func TestStringArrayToChannel(t *testing.T) {
+	now := time.Now()
+	defer func() {
+		fmt.Println("Execution Time: ", time.Since(now))
+	}()
+	defer time.Sleep(time.Second)  // give it time to print the Execution time.
+
+	generator := GeneratorFromStringArrayToChannel
+	toString := ToStringChannel
+
+	done := make(chan interface{})
+	defer close(done)
+
+	names := []string{`tom`, `dick`, `harry`}
+
+	dataChannel := generator(done, names)
+	for val := range toString(done, dataChannel) {
+		fmt.Printf("%s\n", val)
+	}
+}
+
+func TestThrottleChannel(t *testing.T) {
+	now := time.Now()
+	defer func() {
+		fmt.Println("Execution Time: ", time.Since(now))
+	}()
+	defer time.Sleep(time.Second)  // give it time to print the Execution time.
+
+	generator := GeneratorFromStringArrayToChannel
+	toString := ToStringChannel
+	throttle := ThrottleChannel
+
+	// a channel which just takes time to run.
+	sleeper := func(done <- chan interface{}, valueStream <-chan interface{}) <-chan interface{} {
+		orDone := OrDoneChannel
+		out := make(chan interface{})
+		go func() {
+			defer close(out)
+
+			for val := range orDone(done, valueStream) {
+				time.Sleep(2 * time.Second)
+				select {
+				case <-done:
+					return
+				case out <- val:
+					fmt.Printf("got data out %v\n", val)
+				}
+			}
+		}()
+		return out
+	}
+
+	names := []string{`tom`, `dick`, `harry`, `sue`, `april`, `jane`, `bill`, `dan`, `bob`, `gary`}
+	done := make(chan interface{})
+	defer close(done)
+
+	dataChannel := sleeper(done, throttle(done,generator(done, names), 2))
+	for val := range toString(done, dataChannel) {
+		fmt.Printf("%s\n", val)
 	}
 }
