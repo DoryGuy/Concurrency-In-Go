@@ -243,16 +243,16 @@ func TestStringArrayToChannel(t *testing.T) {
 	}
 }
 
-func TestThrottleChannel(t *testing.T) {
+func TestBufferChannel(t *testing.T) {
 	now := time.Now()
 	defer func() {
 		fmt.Println("Execution Time: ", time.Since(now))
 	}()
 	defer time.Sleep(time.Second)  // give it time to print the Execution time.
-
-	generator := GeneratorFromStringArrayToChannel
+	
 	toString := ToStringChannel
-	throttle := ThrottleChannel
+	buffer := BufferChannel
+	fanIn := FanInChannel
 
 	// a channel which just takes time to run.
 	sleeper := func(done <- chan interface{}, valueStream <-chan interface{}) <-chan interface{} {
@@ -262,24 +262,57 @@ func TestThrottleChannel(t *testing.T) {
 			defer close(out)
 
 			for val := range orDone(done, valueStream) {
-				time.Sleep(2 * time.Second)
 				select {
 				case <-done:
 					return
 				case out <- val:
 					fmt.Printf("got data out %v\n", val)
+					time.Sleep(15 * time.Second)
 				}
 			}
 		}()
 		return out
 	}
 
-	names := []string{`tom`, `dick`, `harry`, `sue`, `april`, `jane`, `bill`, `dan`, `bob`, `gary`}
+	// this generator take time to run, but it's different than the consumer channel
+	nameGenerator := func(done <- chan interface{}, strArray []string) <-chan interface{} {
+		out := make(chan interface{})
+		go func() {
+			defer func(){
+				close(out)
+				fmt.Print("nameGenerator finished.\n")
+			}()
+
+			for _,s := range strArray {
+				select {
+				case <-done:
+					return
+				case out <- s:
+					fmt.Printf("put data in %s\n", s)
+					time.Sleep(1 * time.Second)
+				}
+			}
+		}()
+		return out
+	}
+
 	done := make(chan interface{})
 	defer close(done)
+	names := []string{`tom`, `dick`, `harry`, `sue`, `april`, `jane`, `bill`, `dan`, `bob`, `gary`}
+	bufferedChan := buffer(done,nameGenerator(done, names), 4)
 
-	dataChannel := sleeper(done, throttle(done,generator(done, names), 2))
+	numSleepers := 3//1 + runtime.NumCPU()
+	fmt.Printf("Spinning up %d sleepers.\n", numSleepers)
+	sleepers := make([]<-chan interface{}, numSleepers)
+
+	for i := 0; i < numSleepers; i++ {
+		sleepers[i] = sleeper(done, bufferedChan)
+	}
+
+	dataChannel := fanIn(done, sleepers...)
+	k := 0
 	for val := range toString(done, dataChannel) {
-		fmt.Printf("%s\n", val)
+		k++
+		fmt.Printf("%2d) %s\n", k, val)
 	}
 }

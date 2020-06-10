@@ -261,25 +261,21 @@ func GeneratorFromStringArrayToChannel(done <-chan interface{}, slice []string) 
 
 // Will limit the number of items passed along in the channel to "limit"
 // This is to prevent downstream process from being flooded.
-func ThrottleChannel(done <-chan interface{}, in <- chan interface{}, limit int) <- chan interface{}{
+func BufferChannel(done <-chan interface{}, in <- chan interface{}, limit int) <- chan interface{}{
 	orDone := OrDoneChannel
-	interfaceChannel := make(chan interface{})
-	tokens := make(chan interface{}, limit)
+	interfaceChannel := make(chan interface{}, limit)
 
 	go func() {
 		defer func() {
 			// clean up the channels we create.
 			close(interfaceChannel)
-			close(tokens)
 		}()
 
 		for val := range orDone(done, in) {
-			tokens <- struct{}{}
 			select {
 			case <-done:
 				return
 			case interfaceChannel <- val:
-				<-tokens
 				//fmt.Printf("pushed data in %v\n", val)
 			}
 		}
