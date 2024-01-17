@@ -144,8 +144,8 @@ func FanInChannel(done <-chan interface{}, channels ... <-chan interface{}) <-ch
     	for i := range c {
     		select {
     		case <- done:
-				return
-			case multiplexedStream <- i:
+			return
+		case multiplexedStream <- i:
 			}
 		}
 	}
@@ -233,7 +233,7 @@ func GeneratorToChannel(done <-chan interface{}, slice ...interface{}) <- chan i
 			select {
 			case <-done:
 				return
-				case interfaceChannel <- i:
+			case interfaceChannel <- i:
 			}
 		}
 	}()
@@ -276,7 +276,6 @@ func BufferChannel(done <-chan interface{}, in <- chan interface{}, limit int) <
 			case <-done:
 				return
 			case interfaceChannel <- val:
-				//fmt.Printf("pushed data in %v\n", val)
 			}
 		}
 	}()
@@ -284,11 +283,7 @@ func BufferChannel(done <-chan interface{}, in <- chan interface{}, limit int) <
 	return interfaceChannel
 }
 
-
-// For type safety, you may want to convert an interface{} channel to a native type.
-// If you need your own struct/type just clone and edit!
-
-// ToTChannel Take an interface channel and convert it to a T channel
+// ToTChannel Take an interface channel and convert it to a type T channel
 func ToTChannel [T any] (done <-chan interface{}, valueStream <-chan interface{}) <-chan T {
 	theStream := make(chan T)
 	go func() {
