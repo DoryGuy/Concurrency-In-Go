@@ -16,7 +16,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/setup-go@v4
       with:
-        go-version: '^1.23'
+        go-version: '1.23'
         check-latest: true
       id: go
 
