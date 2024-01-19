@@ -11,14 +11,16 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
     - name: Check out code into the Go module directory
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21.3'
-        check-latest: true
+        go-version-file: '/go.mod'
+        cache: false
       id: go
+    - run: go version
 
     - name: Get dependencies
       run: |
