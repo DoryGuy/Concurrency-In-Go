@@ -17,7 +17,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/setup-go@v4
       with:
-        go-version-file: '/go.mod'
+        go-version: '1.21.3'
         cache: false
       id: go
     - run: go version
