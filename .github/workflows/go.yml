@@ -31,14 +31,14 @@ jobs:
         fi
 
     - name: Build
-      run: go build -v utils
+      run: go build -v ./utils
 
     - name: Test
-      run: go test -v utils
+      run: go test -v ./utils
 
       
     - name: Build
-      run: go build -v utils_generics
+      run: go build -v ./utils_generics
 
     - name: Test
-      run: go test -v utils_generics
+      run: go test -v ./utils_generics
